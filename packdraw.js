@@ -1,28 +1,35 @@
-(() => {
-  const getRound = () => {
-    const buttons = document.querySelectorAll('button[aria-label="info"]');
-    for (const btn of buttons) {
-      const p = btn.querySelector('p');
-      if (p && p.textContent.includes('/')) {
-        return parseInt(p.childNodes[0].textContent.trim());
+(function() {
+  let lastRollTime = Date.now();
+
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      if (mutation.type === "attributes" && mutation.attributeName === "style") {
+        const target = mutation.target;
+        if (target.tagName && target.tagName.toLowerCase() === "img") {
+          const newStyle = target.getAttribute("style") || "";
+          const oldStyle = mutation.oldValue || "";
+
+          const newOpacity = (newStyle.match(/opacity:\s*([0-9.]+)/) || [])[1];
+          const oldOpacity = (oldStyle.match(/opacity:\s*([0-9.]+)/) || [])[1];
+
+          if (newOpacity === "1" && oldOpacity !== "1") {
+            const now = Date.now();
+            const elapsed = (now - lastRollTime) / 1000;
+
+            if (elapsed < 1) return; // ignore duplicate fires
+
+            console.log(`New roll detected. Time since last roll: ${elapsed.toFixed(2)}s`);
+            lastRollTime = now;
+          }
+        }
       }
-    }
-    return null;
-  };
+    });
+  });
 
-  let currentRound = getRound();
-  let roundStart = performance.now();
-
-  console.log(`Tracking started — current round: ${currentRound}`);
-
-  setInterval(() => {
-    const newRound = getRound();
-    if (newRound === null || newRound === currentRound) return;
-
-    const elapsed = ((performance.now() - roundStart) / 1000).toFixed(2);
-    console.log(`Round ${currentRound} → ${newRound} | took ${elapsed}s`);
-
-    currentRound = newRound;
-    roundStart = performance.now();
-  }, 100);
+  observer.observe(document.body, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ["style"],
+    attributeOldValue: true
+  });
 })();
